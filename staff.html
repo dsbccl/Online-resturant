@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #F5A623; --gold-dark: #D4891A; --charcoal: #1C1C1E;
+    --surface: #F2EDE6; --card: #FFFFFF; --card2: #FDF9F4;
+    --crimson: #C0392B; --green: #27AE60; --blue: #2980B9;
+    --border: #E0D8CE; --text: #1C1C1E; --muted: #888;
+  }
+  body { background: var(--surface); font-family: 'Inter', sans-serif; color: var(--text); min-height: 100vh; }
+
+  /* ── AUTH SCREENS ── */
+  .auth-screen {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: var(--charcoal); align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .auth-screen.visible { display: flex; }
+  .auth-box {
+    background: #23232A; border-radius: 18px; padding: 2.5rem 2rem;
+    width: 100%; max-width: 400px; border: 1px solid #333;
+  }
+  .auth-logo { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.6rem; text-align: center; margin-bottom: 0.3rem; }
+  .auth-sub  { text-align: center; color: #777; font-size: 0.85rem; margin-bottom: 2rem; }
+  .auth-tabs { display: flex; background: #111; border-radius: 8px; padding: 3px; margin-bottom: 1.75rem; }
+  .auth-tab  { flex: 1; padding: 0.5rem; text-align: center; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #666; transition: all 0.2s; border: none; background: none; }
+  .auth-tab.active { background: var(--charcoal); color: var(--gold); }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 0.75rem; color: #aaa; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-group input {
+    width: 100%; padding: 0.75rem 1rem; background: #111; border: 1.5px solid #333;
+    border-radius: 8px; color: #fff; font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s;
+  }
+  .form-group input:focus { outline: none; border-color: var(--gold); }
+  .auth-btn {
+    width: 100%; padding: 0.85rem; background: var(--gold); color: var(--charcoal);
+    border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; transition: background 0.15s;
+  }
+  .auth-btn:hover { background: var(--gold-dark); }
+  .auth-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+  .auth-error { background: rgba(192,57,43,0.15); border: 1px solid var(--crimson); color: #e74c3c; padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+  .auth-error.show { display: block; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--charcoal); padding: 0 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 62px; position: sticky; top: 0; z-index: 50;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 0.75rem; }
+  .topbar-left h1 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.25rem; }
+  .staff-badge { font-size: 0.72rem; background: #333; color: #aaa; padding: 0.2rem 0.65rem; border-radius: 4px; }
+  .staff-email { font-size: 0.8rem; color: #aaa; }
+  .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+  .btn-signout { background: transparent; border: 1px solid #444; color: #aaa; padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; }
+  .btn-signout:hover { border-color: var(--crimson); color: var(--crimson); }
+
+  /* ── MAIN ── */
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 0.4rem; }
+  .page-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+
+  /* ── TABLES GRID ── */
+  .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+  .table-card {
+    background: var(--card); border-radius: 16px; padding: 1.5rem;
+    border: 2px solid var(--border); transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .table-card.active-table { border-color: var(--green); box-shadow: 0 0 0 4px rgba(39,174,96,0.1); }
+  .table-card.inactive-table { border-color: var(--border); }
+
+  /* status pill top-right */
+  .table-status-pill {
+    position: absolute; top: 1rem; right: 1rem;
+    padding: 0.25rem 0.7rem; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .pill-active   { background: #D4EDDA; color: #155724; }
+  .pill-inactive { background: #E2E3E5; color: #555; }
+  .pill-occupied { background: #CCE5FF; color: #004085; }
+
+  .table-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+  .table-name-label { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .table-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.25rem; min-height: 1.2rem; }
+
+  .table-actions { display: flex; gap: 0.6rem; }
+  .btn-activate {
+    flex: 1; padding: 0.65rem; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+    background: var(--green); color: #fff;
+  }
+  .btn-activate:hover { background: #219a52; }
+  .btn-close-table {
+    flex: 1; padding: 0.65rem; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+    background: var(--crimson); color: #fff;
+  }
+  .btn-close-table:hover { background: #a93226; }
+  .btn-disabled {
+    flex: 1; padding: 0.65rem; border: 1.5px solid var(--border); border-radius: 8px;
+    font-weight: 600; font-size: 0.85rem; cursor: not-allowed; background: #f5f5f5; color: #aaa;
+  }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-active   { background: var(--green); }
+  .dot-inactive { background: #ccc; }
+  .dot-occupied { background: var(--blue); }
+
+  /* ── EMPTY ── */
+  .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--charcoal); color: #fff; padding: 0.75rem 1.5rem;
+    border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.3s;
+    pointer-events: none; z-index: 400; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { background: #1e6e3e; }
+  #toast.error   { background: #8e1c10; }
+
+  .loading-spinner { width: 36px; height: 36px; border: 3px solid #333; border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 3rem auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 500px) {
+    .topbar { padding: 0 1rem; }
+    .staff-email { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div class="auth-screen visible" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">🍽️ TableOrder</div>
+    <div class="auth-sub">Staff Portal</div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="staff@restaurant.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="••••••••"></div>
+    <button class="auth-btn" id="login-btn">Sign In</button>
+    <p style="text-align:center;margin-top:1.25rem;font-size:0.8rem;color:#555;">Accounts are created by your admin.</p>
+  </div>
+</div>
+
+<!-- ── TOPBAR (shown when logged in) ── -->
+<div class="topbar" id="topbar" style="display:none;">
+  <div class="topbar-left">
+    <h1>Staff Panel</h1>
+    <span class="staff-badge" id="staff-name-badge">Staff</span>
+  </div>
+  <div class="topbar-right">
+    <span class="staff-email" id="staff-email-display"></span>
+    <button class="btn-signout" id="btn-signout">Sign Out</button>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<main id="main-app" style="display:none;">
+  <div class="page-title">Table Control</div>
+  <div class="page-sub">Activate a table when a customer is seated. Close it when they leave.</div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot dot-active"></div> Active — customers can order</div>
+    <div class="legend-item"><div class="legend-dot dot-occupied"></div> Occupied — session in progress</div>
+    <div class="legend-item"><div class="legend-dot dot-inactive"></div> Inactive — QR blocked</div>
+  </div>
+
+  <div id="tables-container">
+    <div class="loading-spinner"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// ─── Firebase init ────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBU_1kI8MrC_vH_xhH_Am68H_KxzVLl4pA",
+  authDomain: "resturant-c687d.firebaseapp.com",
+  projectId: "resturant-c687d",
+  storageBucket: "resturant-c687d.firebasestorage.app",
+  messagingSenderId: "689018370570",
+  appId: "1:689018370570:web:b3a8c91453d4b0769d3df3"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+let currentUser  = null;
+let unsubTables  = null;
+
+// ─── Auth state listener ──────────────────────────────────────────
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    showAuthScreen();
+    return;
+  }
+
+  await user.reload();
+  currentUser = auth.currentUser;
+
+  // Check staff role
+  try {
+    const roleDoc = await db.collection('users').doc(currentUser.uid).get();
+    const role = roleDoc.exists ? roleDoc.data().role : null;
+    if (!roleDoc.exists || !['admin', 'kitchen', 'staff'].includes(role)) {
+      showAuthError('Your account has no staff role assigned. Contact your admin.');
+      await auth.signOut();
+      return;
+    }
+    showMainApp(currentUser);
+  } catch (e) {
+    showAuthError('Could not verify your account. Try again.');
+    await auth.signOut();
+  }
+});
+
+// ─── UI: which screen to show ────────────────────────────────────
+function showAuthScreen() {
+  hide('topbar'); hide('main-app');
+  show('auth-screen');
+  if (unsubTables) { unsubTables(); unsubTables = null; }
+}
+
+function showMainApp(user) {
+  hide('auth-screen');
+  document.getElementById('topbar').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'block';
+
+  // Display name or email
+  const name = user.displayName || user.email.split('@')[0];
+  document.getElementById('staff-name-badge').textContent = name;
+  document.getElementById('staff-email-display').textContent = user.email;
+
+  listenTables();
+}
+
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { const el = document.getElementById(id); if (el) { el.style.display = 'none'; el.classList?.remove('visible'); } }
+
+// ─── LOGIN ────────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) return showAuthError('Please enter email and password.');
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged handles the rest
+  } catch (e) {
+    showAuthError(friendlyError(e.code));
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+});
+
+// Enter key on login
+['login-email','login-password'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-btn').click();
+  });
+});
+
+// ─── SIGN OUT ────────────────────────────────────────────────────
+document.getElementById('btn-signout').addEventListener('click', async () => {
+  if (unsubTables) { unsubTables(); unsubTables = null; }
+  await auth.signOut();
+  showToast('Signed out.');
+});
+
+// ─── LISTEN TABLES ────────────────────────────────────────────────
+function listenTables() {
+  if (unsubTables) unsubTables();
+
+  unsubTables = db.collection('tables')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(async snap => {
+      const tables = [];
+      snap.forEach(d => tables.push({ id: d.id, ...d.data() }));
+
+      // For each table, check if there's an active session
+      const sessionChecks = tables.map(async t => {
+        const sesSnap = await db.collection('sessions')
+          .where('tableId', '==', t.id)
+          .where('status', '==', 'active')
+          .get();
+        t.hasActiveSession = !sesSnap.empty;
+        return t;
+      });
+
+      const tablesWithSessions = await Promise.all(sessionChecks);
+      renderTables(tablesWithSessions);
+    }, err => {
+      console.error(err);
+      showToast('Error loading tables.', 'error');
+    });
+}
+
+// ─── RENDER TABLES ───────────────────────────────────────────────
+function renderTables(tables) {
+  const container = document.getElementById('tables-container');
+
+  if (tables.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🪑</div>
+        <p>No tables found. Add tables in the Admin Panel first.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'tables-grid';
+
+  tables.forEach(table => {
+    // Determine state
+    // tableActive: staff has enabled ordering on this table
+    // hasActiveSession: a customer has an ongoing session
+    const isActive         = table.tableActive === true;
+    const isOccupied       = isActive && table.hasActiveSession;
+
+    let pillClass, pillText, cardClass;
+    if (isOccupied) {
+      pillClass = 'pill-occupied'; pillText = '🔵 Occupied'; cardClass = 'active-table';
+    } else if (isActive) {
+      pillClass = 'pill-active'; pillText  = '🟢 Active';   cardClass = 'active-table';
+    } else {
+      pillClass = 'pill-inactive'; pillText = '⚫ Inactive'; cardClass = 'inactive-table';
+    }
+
+    const card = document.createElement('div');
+    card.className = `table-card ${cardClass}`;
+    card.innerHTML = `
+      <span class="table-status-pill ${pillClass}">${pillText}</span>
+      <div class="table-icon">${isOccupied ? '👥' : isActive ? '✅' : '🪑'}</div>
+      <div class="table-name-label">${table.name}</div>
+      <div class="table-meta" id="meta-${table.id}">
+        ${isOccupied ? 'Customer session in progress' : isActive ? 'Ready for customers' : 'QR code is blocked'}
+      </div>
+      <div class="table-actions" id="actions-${table.id}"></div>`;
+
+    const actions = card.querySelector(`#actions-${table.id}`);
+
+    if (!isActive) {
+      // Show ACTIVATE button only
+      const activateBtn = document.createElement('button');
+      activateBtn.className = 'btn-activate';
+      activateBtn.textContent = '✅ Activate Table';
+      activateBtn.addEventListener('click', () => activateTable(table.id, table.name, activateBtn));
+      actions.appendChild(activateBtn);
+
+    } else if (isOccupied) {
+      // Occupied — show Close Table (force close) and a disabled info btn
+      const infoBtn = document.createElement('button');
+      infoBtn.className = 'btn-disabled';
+      infoBtn.textContent = 'Session Active';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'btn-close-table';
+      closeBtn.textContent = '🔴 Force Close';
+      closeBtn.addEventListener('click', () => closeTable(table.id, table.name, closeBtn, true));
+
+      actions.appendChild(infoBtn);
+      actions.appendChild(closeBtn);
+
+    } else {
+      // Active but no session — show Close Table
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'btn-close-table';
+      closeBtn.textContent = '🔴 Close Table';
+      closeBtn.addEventListener('click', () => closeTable(table.id, table.name, closeBtn, false));
+      actions.appendChild(closeBtn);
+    }
+
+    grid.appendChild(card);
+  });
+
+  container.appendChild(grid);
+}
+
+// ─── ACTIVATE TABLE ───────────────────────────────────────────────
+async function activateTable(tableId, tableName, btn) {
+  btn.disabled = true; btn.textContent = 'Activating…';
+  try {
+    await db.collection('tables').doc(tableId).update({
+      tableActive: true,
+      activatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      activatedBy: currentUser.email
+    });
+    showToast(`✅ ${tableName} is now active!`, 'success');
+  } catch (e) {
+    showToast('Failed to activate table.', 'error');
+    console.error(e);
+    btn.disabled = false; btn.textContent = '✅ Activate Table';
+  }
+}
+
+// ─── CLOSE TABLE ─────────────────────────────────────────────────
+async function closeTable(tableId, tableName, btn, isForce) {
+  const confirmMsg = isForce
+    ? `Force close "${tableName}"? This will end the customer's active session immediately.`
+    : `Close "${tableName}"? Customers will not be able to scan until you activate it again.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  btn.disabled = true; btn.textContent = 'Closing…';
+
+  try {
+    // Expire any active sessions for this table
+    const sesSnap = await db.collection('sessions')
+      .where('tableId', '==', tableId)
+      .where('status', '==', 'active')
+      .get();
+
+    const batch = db.batch();
+    sesSnap.forEach(d => {
+      batch.update(d.ref, { status: 'expired', expiredBy: 'staff', expiredAt: firebase.firestore.FieldValue.serverTimestamp() });
+    });
+
+    // Deactivate the table
+    batch.update(db.collection('tables').doc(tableId), {
+      tableActive: false,
+      closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      closedBy: currentUser.email
+    });
+
+    await batch.commit();
+    showToast(`🔴 ${tableName} closed.`, 'success');
+  } catch (e) {
+    showToast('Failed to close table.', 'error');
+    console.error(e);
+    btn.disabled = false; btn.textContent = isForce ? '🔴 Force Close' : '🔴 Close Table';
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearAuthError() {
+  document.getElementById('auth-error').classList.remove('show');
+}
+
+function friendlyError(code) {
+  const map = {
+    'auth/user-not-found':       'No account found with this email.',
+    'auth/wrong-password':       'Incorrect password.',
+    'auth/email-already-in-use': 'An account with this email already exists.',
+    'auth/invalid-email':        'Please enter a valid email address.',
+    'auth/weak-password':        'Password must be at least 6 characters.',
+    'auth/too-many-requests':    'Too many attempts. Please wait a moment and try again.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/invalid-credential':   'Incorrect email or password.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  setTimeout(() => t.className = '', 3000);
+}
+</script>
+</body>
+</html>
