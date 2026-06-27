@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- QR Code library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #F5A623; --gold-dark: #D4891A; --charcoal: #1C1C1E;
+    --surface: #F2EDE6; --card: #FFFFFF; --card2: #FDF9F4;
+    --crimson: #C0392B; --green: #27AE60; --blue: #2980B9;
+    --border: #E0D8CE; --text: #1C1C1E; --muted: #777;
+  }
+  body { background: var(--surface); font-family: 'Inter', sans-serif; color: var(--text); min-height: 100vh; }
+
+  /* TOP BAR */
+  .topbar { background: var(--charcoal); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 62px; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+  .topbar-brand h1 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.35rem; }
+  .topbar-brand p { color: #777; font-size: 0.75rem; }
+  .nav-links { display: flex; gap: 0.6rem; }
+  .nav-link { color: #aaa; text-decoration: none; font-size: 0.85rem; padding: 0.4rem 0.9rem; border-radius: 6px; border: 1px solid #444; transition: all 0.15s; }
+  .nav-link:hover { color: var(--gold); border-color: var(--gold); }
+
+  /* MAIN LAYOUT */
+  main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* REVENUE STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+  .stat-card { background: var(--card); border-radius: 14px; padding: 1.4rem 1.5rem; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .stat-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-card .value { font-size: 2rem; font-weight: 700; font-family: 'Playfair Display', serif; color: var(--charcoal); margin-top: 0.3rem; }
+  .stat-card .value.gold { color: var(--gold-dark); }
+  .stat-card .value.green { color: var(--green); }
+
+  /* SECTION HEADERS */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .section-header h2 { font-family: 'Playfair Display', serif; font-size: 1.3rem; }
+  .section-divider { margin-bottom: 2.5rem; }
+
+  /* TABLE MANAGEMENT */
+  .add-table-row { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .add-table-row input { flex: 1; padding: 0.65rem 1rem; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--card); transition: border-color 0.15s; }
+  .add-table-row input:focus { outline: none; border-color: var(--gold); }
+  .btn-primary { padding: 0.65rem 1.4rem; background: var(--charcoal); color: var(--gold); border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+  .btn-primary:hover { background: #2d2d30; }
+
+  .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .table-card { background: var(--card); border-radius: 14px; padding: 1.25rem; border: 1px solid var(--border); }
+  .table-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+  .table-name { font-weight: 700; font-size: 1.05rem; }
+  .table-revenue { font-size: 0.85rem; color: var(--green); font-weight: 600; }
+  .table-actions { display: flex; gap: 0.5rem; margin-top: 0.85rem; flex-wrap: wrap; }
+  .btn-sm { padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-qr { background: var(--gold); color: var(--charcoal); }
+  .btn-qr:hover { background: var(--gold-dark); }
+  .btn-bill { background: var(--blue); color: #fff; }
+  .btn-bill:hover { background: #1f6fa0; }
+  .btn-delete { background: transparent; color: var(--crimson); border: 1.5px solid var(--crimson) !important; }
+  .btn-delete:hover { background: var(--crimson); color: #fff; }
+  .btn-sm { border: none; }
+
+  /* REVENUE TABLE */
+  .revenue-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+  .revenue-table th { background: var(--charcoal); color: var(--gold); padding: 0.85rem 1.2rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .revenue-table td { padding: 0.85rem 1.2rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .revenue-table tr:last-child td { border-bottom: none; }
+  .revenue-table tr:hover td { background: var(--card2); }
+  .status-badge { padding: 0.2rem 0.6rem; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .s-pending { background: #FFF3CD; color: #856404; }
+  .s-preparing { background: #CCE5FF; color: #004085; }
+  .s-ready { background: #D4EDDA; color: #155724; }
+  .s-served { background: #E2E3E5; color: #383D41; }
+
+  /* QR MODAL */
+  #qr-modal { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 1rem; }
+  #qr-modal.open { display: flex; }
+  .qr-panel { background: #fff; border-radius: 20px; padding: 2rem; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .qr-panel h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.4rem; }
+  .qr-panel p { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
+  #qr-display { display: flex; justify-content: center; margin-bottom: 1.25rem; }
+  .qr-actions { display: flex; gap: 0.75rem; justify-content: center; }
+  .qr-url { font-size: 0.7rem; color: var(--muted); word-break: break-all; margin-bottom: 1rem; background: #f5f5f5; padding: 0.5rem; border-radius: 6px; }
+
+  /* BILL MODAL */
+  #bill-modal { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 1rem; }
+  #bill-modal.open { display: flex; }
+  .bill-panel { background: #fff; border-radius: 16px; padding: 2rem; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .bill-header { text-align: center; border-bottom: 2px solid var(--charcoal); padding-bottom: 1rem; margin-bottom: 1rem; }
+  .bill-header h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; }
+  .bill-header .restaurant-name { font-size: 1rem; color: var(--muted); }
+  .bill-table-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }
+  .bill-date { font-size: 0.8rem; color: var(--muted); }
+  .bill-items { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  .bill-items th { text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--muted); padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+  .bill-items td { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+  .bill-items tr:last-child td { border-bottom: none; }
+  .bill-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; border-top: 2px solid var(--charcoal); padding-top: 0.75rem; margin-top: 0.5rem; }
+  .bill-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+  .btn-print { flex: 1; padding: 0.75rem; background: var(--charcoal); color: var(--gold); border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .btn-close-modal { flex: 1; padding: 0.75rem; background: var(--surface); color: var(--charcoal); border: 1.5px solid var(--border); border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .bill-footer { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 1rem; }
+
+  .empty-state { text-align: center; padding: 2rem; color: var(--muted); }
+  .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--charcoal); color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 400; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* STAFF MANAGEMENT */
+  .staff-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem; margin-bottom: 1.5rem; align-items: end; }
+  @media (max-width: 700px) { .staff-form { grid-template-columns: 1fr; } }
+  .staff-form .form-field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .staff-form .form-field label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .staff-form .form-field input { padding: 0.65rem 1rem; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--card); transition: border-color 0.15s; font-family: 'Inter', sans-serif; }
+  .staff-form .form-field input:focus { outline: none; border-color: var(--gold); }
+  .staff-table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+  .staff-table th { background: var(--charcoal); color: var(--gold); padding: 0.85rem 1.2rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .staff-table td { padding: 0.85rem 1.2rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .staff-table tr:last-child td { border-bottom: none; }
+  .staff-table tr:hover td { background: var(--card2); }
+  .role-badge { padding: 0.2rem 0.65rem; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .role-admin   { background: #FFF3CD; color: #856404; }
+  .role-kitchen { background: #CCE5FF; color: #004085; }
+  .role-staff   { background: #D4EDDA; color: #155724; }
+  .btn-remove-staff { padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--crimson); color: var(--crimson); background: transparent; transition: all 0.15s; }
+  .btn-remove-staff:hover { background: var(--crimson); color: #fff; }
+  #staff-form-error { color: var(--crimson); font-size: 0.82rem; min-height: 1.1em; margin-bottom: 0.5rem; }
+
+  @media print {
+    body > *:not(#bill-modal) { display: none !important; }
+    #bill-modal { display: flex !important; position: static; background: none; padding: 0; }
+    .bill-panel { box-shadow: none; max-height: none; border-radius: 0; }
+    .bill-actions { display: none; }
+  }
+
+  /* LOGIN SCREEN */
+  #login-screen { position: fixed; inset: 0; z-index: 500; background: var(--surface); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .login-panel { background: var(--card); border-radius: 16px; padding: 2.2rem; max-width: 360px; width: 100%; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.12); }
+  .login-panel h1 { font-family: 'Playfair Display', serif; color: var(--charcoal); font-size: 1.5rem; margin-bottom: 0.2rem; text-align: center; }
+  .login-panel p.sub { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .login-field { margin-bottom: 1rem; }
+  .login-field label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.35rem; }
+  .login-field input { width: 100%; padding: 0.65rem 1rem; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; }
+  .login-field input:focus { outline: none; border-color: var(--gold); }
+  .login-error { color: var(--crimson); font-size: 0.82rem; margin-bottom: 0.75rem; min-height: 1.1em; }
+  .btn-login { width: 100%; padding: 0.75rem; background: var(--charcoal); color: var(--gold); border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
+  .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-logout { color: #aaa; text-decoration: none; font-size: 0.85rem; padding: 0.4rem 0.9rem; border-radius: 6px; border: 1px solid #444; background: none; cursor: pointer; }
+  .btn-logout:hover { color: var(--gold); border-color: var(--gold); }
+  #app-shell { display: none; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-panel">
+    <h1>Admin Panel</h1>
+    <p class="sub">Sign in with your staff account</p>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@restaurant.com" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div id="app-shell">
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <h1>Admin Panel</h1>
+    <p>Restaurant Management</p>
+  </div>
+  <div class="nav-links">
+        <a href="staff.html" class="nav-link"> Staff</a>
+    <a href="index.html" class="nav-link"> Kitchen</a>
+    <button class="btn-logout" onclick="doLogout()">Log out</button>
+  </div>
+</div>
+
+<main>
+  <!-- REVENUE STATS -->
+  <div class="stats-grid">
+    <div class="stat-card"><div class="label">Total Revenue</div><div class="value gold" id="stat-total-rev">₹0</div></div>
+    <div class="stat-card"><div class="label">Total Orders</div><div class="value" id="stat-total-orders">0</div></div>
+    <div class="stat-card"><div class="label">Active Tables</div><div class="value" id="stat-active-tables">0</div></div>
+    <div class="stat-card"><div class="label">Orders Served</div><div class="value green" id="stat-served">0</div></div>
+  </div>
+
+  <!-- TABLE MANAGEMENT -->
+  <div class="section-divider">
+    <div class="section-header">
+      <h2>🪑 Tables</h2>
+    </div>
+    <div class="add-table-row">
+      <input type="text" id="table-name-input" placeholder="Table name (e.g. Table 1, Window Table…)">
+      <button class="btn-primary" onclick="addTable()">+ Add Table</button>
+    </div>
+    <div class="tables-grid" id="tables-grid">
+      <div class="empty-state"><div class="icon">🪑</div><p>No tables yet. Add one above.</p></div>
+    </div>
+  </div>
+
+  <!-- STAFF MANAGEMENT -->
+  <div class="section-divider">
+    <div class="section-header">
+      <h2>👤 Staff Accounts</h2>
+    </div>
+    <div class="staff-form">
+      <div class="form-field">
+        <label>Full Name</label>
+        <input type="text" id="staff-name" placeholder="Jane Smith">
+      </div>
+      <div class="form-field">
+        <label>Email</label>
+        <input type="email" id="staff-email" placeholder="jane@restaurant.com">
+      </div>
+      <div class="form-field">
+        <label>Password</label>
+        <input type="password" id="staff-password" placeholder="Min. 6 characters">
+      </div>
+      <button class="btn-primary" id="btn-register-staff" onclick="registerStaff()" style="height:42px;align-self:end;">+ Register Staff</button>
+    </div>
+    <div id="staff-form-error"></div>
+    <table class="staff-table" id="staff-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Added</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="staff-tbody">
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted)">Loading staff…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- REVENUE BREAKDOWN -->
+  <div class="section-divider">
+    <div class="section-header">
+      <h2>📊 Revenue Breakdown</h2>
+    </div>
+    <table class="revenue-table">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Table</th>
+          <th>Items</th>
+          <th>Status</th>
+          <th>Amount</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="revenue-tbody">
+        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">No orders yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- QR MODAL -->
+<div id="qr-modal">
+  <div class="qr-panel">
+    <h2 id="qr-table-name">Table</h2>
+    <p>Scan this QR code to place orders. A new session link is generated each time.</p>
+    <div id="qr-display"></div>
+    <div class="qr-url" id="qr-url-text"></div>
+    <div class="qr-actions">
+      <button class="btn-sm btn-bill" onclick="printQR()">🖨 Print QR</button>
+      <button class="btn-sm btn-delete" style="border:1.5px solid #aaa !important;color:#555;background:#eee;" onclick="closeQRModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- BILL MODAL -->
+<div id="bill-modal">
+  <div class="bill-panel" id="bill-content">
+    <!-- Filled dynamically -->
+  </div>
+</div>
+
+<div id="toast"></div>
+</div><!-- /app-shell -->
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script>
+// Primary app — admin stays signed in here at all times
+const firebaseConfig = {
+  apiKey: "AIzaSyBU_1kI8MrC_vH_xhH_Am68H_KxzVLl4pA",
+  authDomain: "resturant-c687d.firebaseapp.com",
+  projectId: "resturant-c687d",
+  storageBucket: "resturant-c687d.firebasestorage.app",
+  messagingSenderId: "689018370570",
+  appId: "1:689018370570:web:b3a8c91453d4b0769d3df3",
+  measurementId: "G-BKR25FQ97Z"
+};
+firebase.initializeApp(firebaseConfig);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+// Secondary app — used ONLY to create new staff accounts.
+// Firebase auto-signs in as the new user on createUserWithEmailAndPassword,
+// but it happens on this isolated instance so the admin session is untouched.
+const secondaryApp  = firebase.initializeApp(firebaseConfig, 'secondary');
+const secondaryAuth = secondaryApp.auth();
+
+// ─── State ────────────────────────────────────────────────────────
+let allTables  = [];
+let allOrders  = [];
+let allStaff   = [];
+let qrCurrentTableId = null;
+let unsubTables       = null;
+let unsubOrders       = null;
+let unsubStaff        = null;
+
+const ALLOWED_ROLES    = ['admin', 'kitchen'];
+const LOGIN_BTN_DEFAULT = 'Sign In';
+
+// ─── Auth gating ─────────────────────────────────────────────────
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    showLogin();
+    stopListeners();
+    return;
+  }
+  try {
+    const roleDoc = await db.collection('users').doc(user.uid).get();
+    const role = roleDoc.exists ? roleDoc.data().role : null;
+    if (!ALLOWED_ROLES.includes(role)) {
+      setLoginError('Your account has no admin role. Contact your admin.');
+      await auth.signOut();
+      return;
+    }
+    showApp();
+    startListeners();
+  } catch (e) {
+    console.error(e);
+    setLoginError('Could not verify your account. Try again.');
+    await auth.signOut();
+  }
+});
+
+// ─── Login / Logout ──────────────────────────────────────────────
+window.doLogin = async function() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn      = document.getElementById('login-btn');
+  setLoginError('');
+  if (!email || !password) return setLoginError('Enter your email and password.');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (e) {
+    setLoginError(friendlyAuthError(e));
+    btn.disabled = false; btn.textContent = LOGIN_BTN_DEFAULT;
+  }
+};
+
+window.doLogout = async function() {
+  stopListeners();
+  await auth.signOut();
+};
+
+function stopListeners() {
+  if (unsubTables) { unsubTables(); unsubTables = null; }
+  if (unsubOrders) { unsubOrders(); unsubOrders = null; }
+  if (unsubStaff)  { unsubStaff();  unsubStaff  = null; }
+}
+
+function showLogin() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-shell').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'block';
+}
+function setLoginError(msg) {
+  document.getElementById('login-error').textContent = msg;
+}
+function friendlyAuthError(e) {
+  switch (e.code) {
+    case 'auth/invalid-email':       return 'That email address looks invalid.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':  return 'Incorrect email or password.';
+    case 'auth/too-many-requests':   return 'Too many attempts. Try again later.';
+    default: return 'Sign-in failed. Please try again.';
+  }
+}
+
+// ─── Realtime listeners ──────────────────────────────────────────
+function startListeners() {
+  if (!unsubTables) {
+    unsubTables = db.collection('tables').onSnapshot(snap => {
+      allTables = [];
+      snap.forEach(d => allTables.push({ id: d.id, ...d.data() }));
+      renderTables();
+      updateStats();
+    });
+  }
+  if (!unsubOrders) {
+    unsubOrders = db.collection('orders').orderBy('createdAt', 'desc').onSnapshot(snap => {
+      allOrders = [];
+      snap.forEach(d => allOrders.push({ id: d.id, ...d.data() }));
+      renderRevenueTable();
+      updateStats();
+    });
+  }
+  if (!unsubStaff) {
+    unsubStaff = db.collection('users').onSnapshot(snap => {
+      allStaff = [];
+      snap.forEach(d => allStaff.push({ uid: d.id, ...d.data() }));
+      renderStaffTable();
+    });
+  }
+}
+
+// ─── Stats ───────────────────────────────────────────────────────
+function updateStats() {
+  const totalRev = allOrders.reduce((s, o) => s + (o.total || 0), 0);
+  const served   = allOrders.filter(o => o.status === 'served').length;
+  document.getElementById('stat-total-rev').textContent    = `₹${totalRev}`;
+  document.getElementById('stat-total-orders').textContent = allOrders.length;
+  document.getElementById('stat-active-tables').textContent = allTables.length;
+  document.getElementById('stat-served').textContent       = served;
+}
+
+// ─── Tables ──────────────────────────────────────────────────────
+function renderTables() {
+  const grid = document.getElementById('tables-grid');
+  if (allTables.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🪑</div><p>No tables yet. Add one above.</p></div>`;
+    return;
+  }
+  grid.innerHTML = allTables.map(t => {
+    const tOrders  = allOrders.filter(o => o.tableId === t.id);
+    const tableRev = tOrders.reduce((s, o) => s + (o.total || 0), 0);
+    const active   = tOrders.filter(o => o.status !== 'served').length;
+    return `
+    <div class="table-card">
+      <div class="table-card-top">
+        <span class="table-name">${t.name}</span>
+        <span class="table-revenue">₹${tableRev} earned</span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted)">${tOrders.length} orders · ${active} active</div>
+      <div class="table-actions">
+        <button class="btn-sm btn-qr"     onclick="openQRModal('${t.id}','${t.name.replace(/'/g,"\\'")}')">📱 QR Code</button>
+        <button class="btn-sm btn-bill"   onclick="generateBill('${t.id}','${t.name.replace(/'/g,"\\'")}')">🧾 Bill</button>
+        <button class="btn-sm btn-delete" onclick="deleteTable('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑 Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.addTable = async function() {
+  const name = document.getElementById('table-name-input').value.trim();
+  if (!name) return showToast('Please enter a table name.');
+  try {
+    await db.collection('tables').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    document.getElementById('table-name-input').value = '';
+    showToast(`✅ "${name}" added!`);
+  } catch (e) { showToast('Failed to add table.'); console.error(e); }
+};
+
+window.deleteTable = async function(id, name) {
+  if (!confirm(`Remove "${name}"? This won't delete its orders.`)) return;
+  try {
+    await db.collection('tables').doc(id).delete();
+    showToast(`"${name}" removed.`);
+  } catch (e) { showToast('Failed to remove table.'); }
+};
+
+// ─── Revenue table ────────────────────────────────────────────────
+function renderRevenueTable() {
+  const tbody = document.getElementById('revenue-tbody');
+  if (allOrders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">No orders yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allOrders.map(o => {
+    const tableName = allTables.find(t => t.id === o.tableId)?.name || o.tableId || '—';
+    const timeStr   = o.createdAt ? new Date(o.createdAt.toMillis()).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+    const itemsSummary = (o.items || []).slice(0, 2).map(i => `${i.name} x${i.qty}`).join(', ') + (o.items?.length > 2 ? '…' : '');
+    return `
+    <tr>
+      <td><code style="font-size:0.75rem">#${o.id.slice(-6).toUpperCase()}</code></td>
+      <td>${tableName}</td>
+      <td style="max-width:180px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${itemsSummary}</td>
+      <td><span class="status-badge s-${o.status}">${o.status}</span></td>
+      <td><strong>₹${o.total}</strong></td>
+      <td style="font-size:0.78rem;color:var(--muted)">${timeStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Staff management ────────────────────────────────────────────
+function renderStaffTable() {
+  const tbody = document.getElementById('staff-tbody');
+  if (!tbody) return;
+  if (allStaff.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted)">No staff accounts yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allStaff.map(s => {
+    const dateStr   = s.createdAt ? new Date(s.createdAt.toMillis()).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+    const roleClass = s.role === 'admin' ? 'role-admin' : s.role === 'kitchen' ? 'role-kitchen' : 'role-staff';
+    const safeName  = (s.name || s.email || '').replace(/'/g, "\\'");
+    return `
+    <tr>
+      <td><strong>${s.name || '—'}</strong></td>
+      <td style="color:var(--muted)">${s.email || '—'}</td>
+      <td><span class="role-badge ${roleClass}">${s.role || 'staff'}</span></td>
+      <td style="font-size:0.8rem;color:var(--muted)">${dateStr}</td>
+      <td><button class="btn-remove-staff" onclick="removeStaff('${s.uid}','${safeName}')">Remove</button></td>
+    </tr>`;
+  }).join('');
+}
+
+window.registerStaff = async function() {
+  const name     = document.getElementById('staff-name').value.trim();
+  const email    = document.getElementById('staff-email').value.trim();
+  const password = document.getElementById('staff-password').value;
+  const errEl    = document.getElementById('staff-form-error');
+  const btn      = document.getElementById('btn-register-staff');
+  errEl.textContent = '';
+
+  if (!name)               return errEl.textContent = 'Please enter a full name.';
+  if (!email)              return errEl.textContent = 'Please enter an email address.';
+  if (password.length < 6) return errEl.textContent = 'Password must be at least 6 characters.';
+
+  btn.disabled = true; btn.textContent = 'Registering…';
+
+  try {
+    // Create the account on the SECONDARY app — admin session is untouched
+    const cred   = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    const newUid = cred.user.uid;
+
+    // Set display name on the new account
+    await cred.user.updateProfile({ displayName: name });
+
+    // Write the user doc (Firestore is shared; auth context for write comes from primary/admin)
+    await db.collection('users').doc(newUid).set({
+      name,
+      email,
+      role: 'staff',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Sign the secondary app out so it's clean for next time
+    await secondaryAuth.signOut();
+
+    // Clear form and show success — admin is still logged in, nothing changed
+    document.getElementById('staff-name').value     = '';
+    document.getElementById('staff-email').value    = '';
+    document.getElementById('staff-password').value = '';
+    showToast(`✅ Staff "${name}" registered successfully!`);
+
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = friendlyStaffError(e.code);
+    try { await secondaryAuth.signOut(); } catch (_) {}
+  } finally {
+    btn.disabled = false; btn.textContent = '+ Register Staff';
+  }
+};
+
+window.removeStaff = async function(uid, name) {
+  if (!confirm(`Remove "${name}" from the staff list?\n\nThis removes their role record. They will be unable to access any panel.`)) return;
+  try {
+    await db.collection('users').doc(uid).delete();
+    showToast(`"${name}" removed.`);
+  } catch (e) { showToast('Failed to remove staff record.'); console.error(e); }
+};
+
+function friendlyStaffError(code) {
+  switch (code) {
+    case 'auth/email-already-in-use': return 'An account with this email already exists.';
+    case 'auth/invalid-email':        return 'Invalid email address.';
+    case 'auth/weak-password':        return 'Password must be at least 6 characters.';
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':   return 'Admin password incorrect — staff account was created but your session may need re-login.';
+    default: return 'Registration failed. Please try again.';
+  }
+}
+
+// ─── QR Code ─────────────────────────────────────────────────────
+window.openQRModal = function(tableId, tableName) {
+  qrCurrentTableId = tableId;
+  document.getElementById('qr-table-name').textContent = tableName;
+  document.getElementById('qr-modal').classList.add('open');
+  generateQRForTable(tableId);
+};
+
+function generateQRForTable(tableId) {
+  const baseUrl = window.location.origin + window.location.pathname.replace('admin-1.html', '') + 'menu.html';
+  const url     = `${baseUrl}?table=${tableId}`;
+  document.getElementById('qr-url-text').textContent = url;
+  const qrContainer = document.getElementById('qr-display');
+  qrContainer.innerHTML = '';
+  new QRCode(qrContainer, { text: url, width: 220, height: 220, colorDark: '#1C1C1E', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+}
+
+window.regenerateQR = function() { if (qrCurrentTableId) generateQRForTable(qrCurrentTableId); };
+
+window.printQR = function() {
+  const tableName = document.getElementById('qr-table-name').textContent;
+  const url       = document.getElementById('qr-url-text').textContent;
+  const canvas    = document.querySelector('#qr-display canvas');
+  const imgSrc    = canvas ? canvas.toDataURL() : '';
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><title>QR - ${tableName}</title>
+    <style>body{font-family:sans-serif;text-align:center;padding:2rem;}h1{font-size:1.5rem;margin-bottom:.5rem;}img{margin:1rem auto;display:block;}p{font-size:.75rem;color:#888;word-break:break-all;max-width:280px;margin:.5rem auto;}.tip{font-size:.85rem;color:#555;margin-top:1rem;}</style>
+    </head><body><h1>🍽️ ${tableName}</h1><p class="tip">Scan to order food</p>
+    <img src="${imgSrc}" width="220" height="220"><p>${url}</p>
+    <script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`);
+  win.document.close();
+};
+
+window.closeQRModal = function() {
+  document.getElementById('qr-modal').classList.remove('open');
+  qrCurrentTableId = null;
+};
+
+// ─── Bill ────────────────────────────────────────────────────────
+window.generateBill = async function(tableId, tableName) {
+  // Fetch the active session for this table to bill only current customer
+  let currentSessionId = null;
+  try {
+    const sessionSnap = await db.collection('sessions')
+      .where('tableId', '==', tableId)
+      .where('status', '==', 'active')
+      .limit(1)
+      .get();
+    if (!sessionSnap.empty) currentSessionId = sessionSnap.docs[0].id;
+  } catch (e) { console.error(e); }
+
+  let tableOrders;
+  if (currentSessionId) {
+    // Active session found — bill only this session
+    tableOrders = allOrders.filter(o => o.sessionId === currentSessionId);
+  } else {
+    // No active session — use the most recent session at this table
+    const allTableOrders = allOrders.filter(o => o.tableId === tableId);
+    if (allTableOrders.length === 0) { showToast('No orders for this table.'); return; }
+    const latestSessionId = allTableOrders
+      .filter(o => o.sessionId)
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))[0]?.sessionId;
+    tableOrders = latestSessionId
+      ? allTableOrders.filter(o => o.sessionId === latestSessionId)
+      : allTableOrders;
+  }
+
+  if (tableOrders.length === 0) { showToast('No orders for the current session.'); return; }
+
+  const itemMap = {};
+  tableOrders.forEach(o => {
+    (o.items || []).forEach(i => {
+      if (!itemMap[i.name]) itemMap[i.name] = { name: i.name, price: i.price, qty: 0 };
+      itemMap[i.name].qty += i.qty;
+    });
+  });
+  const items      = Object.values(itemMap);
+  const total      = items.reduce((s, i) => s + i.price * i.qty, 0);
+
+  const now        = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+  document.getElementById('bill-content').innerHTML = `
+    <div class="bill-header"><div class="restaurant-name">🍽️ TableOrder Restaurant</div><h2>Invoice</h2></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+      <div><div class="bill-table-name">${tableName}</div><div class="bill-date">${now}</div></div>
+      <div style="font-size:.75rem;color:var(--muted);text-align:right">${tableOrders.length} order(s)</div>
+    </div>
+    <table class="bill-items">
+      <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>${items.map(i => `<tr><td>${i.name}</td><td style="text-align:center">${i.qty}</td><td style="text-align:right">₹${i.price}</td><td style="text-align:right">₹${i.price*i.qty}</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="bill-total"><span>Total</span><span>₹${total}</span></div>
+    <div class="bill-footer">Thank you for dining with us! 🙏</div>
+    <div class="bill-actions">
+      <button class="btn-print" onclick="window.print()">🖨 Print Bill</button>
+      <button class="btn-close-modal" onclick="closeBillModal()">Close</button>
+    </div>`;
+  document.getElementById('bill-modal').classList.add('open');
+};
+
+window.closeBillModal = function() { document.getElementById('bill-modal').classList.remove('open'); };
+
+// ─── Modal backdrop close ─────────────────────────────────────────
+document.getElementById('qr-modal').addEventListener('click', function(e) { if (e.target === this) closeQRModal(); });
+document.getElementById('bill-modal').addEventListener('click', function(e) { if (e.target === this) closeBillModal(); });
+
+// ─── Toast ───────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
