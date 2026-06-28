@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menu — Table Order</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #F5A623; --gold-dark: #D4891A; --charcoal: #1C1C1E;
+    --surface: #FFF8F0; --crimson: #C0392B; --text: #2C2C2E;
+    --muted: #6B6B6B; --border: #E8DDD0; --card: #FFFFFF;
+  }
+  body { background: var(--surface); font-family: 'Inter', sans-serif; color: var(--text); min-height: 100vh; }
+
+  /* FULL SCREEN STATES */
+  #session-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 2rem; text-align: center; background: var(--charcoal);
+  }
+  #session-screen .logo { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 2rem; margin-bottom: 1.5rem; }
+  #session-screen h2 { color: #fff; font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 0.75rem; }
+  #session-screen p { color: #aaa; line-height: 1.6; max-width: 300px; }
+  #session-screen .icon { font-size: 4rem; margin-bottom: 1.25rem; }
+
+  /* TIMER BAR */
+  #timer-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--charcoal); color: #fff; padding: 0.6rem 1.2rem;
+    display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem;
+  }
+  #timer-bar .table-label { color: var(--gold); font-weight: 600; }
+  #timer-bar .countdown { display: flex; align-items: center; gap: 0.4rem; }
+  #timer-bar .countdown span { background: var(--gold); color: var(--charcoal); font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.9rem; }
+  #timer-bar .countdown span.urgent { background: var(--crimson); color: #fff; }
+  #timer-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--gold); transition: width 1s linear; }
+
+  header { padding: 5rem 1.5rem 1.5rem; background: var(--charcoal); color: #fff; }
+  header h1 { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); }
+  header p { color: #bbb; margin-top: 0.3rem; font-size: 0.9rem; }
+
+  main { padding: 1.5rem; max-width: 600px; margin: 0 auto; padding-bottom: 6rem; }
+
+  /* CART FAB */
+  #cart-fab {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 90;
+    background: var(--gold); color: var(--charcoal); border: none; border-radius: 50px;
+    padding: 0.85rem 1.4rem; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(245,166,35,0.5); display: none; align-items: center; gap: 0.5rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  #cart-fab:hover { transform: translateY(-2px); }
+  #cart-fab .badge { background: var(--charcoal); color: var(--gold); border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; }
+
+  /* CATEGORY FILTER */
+  .categories { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.5rem; scrollbar-width: none; }
+  .categories::-webkit-scrollbar { display: none; }
+  .cat-btn { flex-shrink: 0; padding: 0.45rem 1rem; border-radius: 50px; border: 1.5px solid var(--border); background: #fff; color: var(--muted); font-size: 0.85rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .cat-btn.active { background: var(--charcoal); color: var(--gold); border-color: var(--charcoal); font-weight: 600; }
+
+  /* MENU CARDS */
+  .menu-card { background: var(--card); border-radius: 12px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.04); margin-bottom: 0.9rem; }
+  .menu-card-info { flex: 1; }
+  .menu-card-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; }
+  .menu-card-info .price { color: var(--gold-dark); font-weight: 700; font-size: 1rem; }
+  .menu-card-info .desc { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.4; }
+  .qty-control { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+  .qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--gold); background: #fff; color: var(--charcoal); font-size: 1.1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .qty-btn:hover { background: var(--gold); }
+  .qty-display { font-weight: 700; min-width: 20px; text-align: center; }
+
+  /* CART MODAL */
+  #cart-modal { display: none; position: fixed; inset: 0; z-index: 200; }
+  #cart-modal.open { display: flex; flex-direction: column; justify-content: flex-end; }
+  .cart-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); cursor: pointer; }
+  .cart-panel { position: relative; background: #fff; border-radius: 20px 20px 0 0; padding: 1.5rem; max-height: 80vh; overflow-y: auto; z-index: 1; }
+  .cart-panel h2 { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 1rem; }
+  .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+  .cart-item:last-of-type { border-bottom: none; }
+  .cart-item-name { font-weight: 500; }
+  .cart-item-meta { font-size: 0.85rem; color: var(--muted); }
+  .cart-total { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; text-align: right; margin: 1rem 0; }
+  .place-order-btn { width: 100%; padding: 1rem; background: var(--charcoal); color: var(--gold); border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+  .close-cart { float: right; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); }
+
+  /* MY ORDERS */
+  #my-orders { margin-top: 2rem; }
+  #my-orders h2 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 1rem; }
+  .order-card { background: var(--card); border-radius: 12px; padding: 1rem; border: 1px solid var(--border); margin-bottom: 0.75rem; }
+  .order-card .order-id { font-size: 0.75rem; color: var(--muted); }
+  .order-card .order-items-list { font-size: 0.9rem; margin: 0.4rem 0; }
+  .status-badge { display: inline-block; padding: 0.25rem 0.7rem; border-radius: 50px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .status-pending { background: #FFF3CD; color: #856404; }
+  .status-preparing { background: #CCE5FF; color: #004085; }
+  .status-ready { background: #D4EDDA; color: #155724; }
+  .status-served { background: #E2E3E5; color: #383D41; }
+
+  .empty-state { text-align: center; padding: 2rem; color: var(--muted); }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--charcoal); color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 300; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .loading-spinner { width: 40px; height: 40px; border: 3px solid #333; border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- FULL SCREEN STATE (loading / expired / blocked) -->
+<div id="session-screen">
+  <div class="logo">🍽️ TableOrder</div>
+  <div id="session-content">
+    <div class="loading-spinner"></div>
+    <h2>Setting up your session…</h2>
+    <p>Please wait.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+  <div id="timer-bar">
+    <span class="table-label" id="timer-table-label">Table —</span>
+    <div class="countdown">⏱ <span id="countdown-display">10:00</span></div>
+    <div id="timer-progress" style="width:100%"></div>
+  </div>
+  <header>
+    <h1 id="restaurant-name">Our Restaurant</h1>
+    <p id="table-label-header">Loading…</p>
+  </header>
+  <main>
+    <div class="categories" id="categories"></div>
+    <div id="menu-container"></div>
+    <div id="my-orders">
+      <h2>Your Orders</h2>
+      <div id="orders-list"><div class="empty-state"><div class="icon">📋</div>No orders yet.</div></div>
+    </div>
+  </main>
+</div>
+
+<!-- CART FAB -->
+<button id="cart-fab">🛒 Cart <span class="badge" id="cart-count">0</span></button>
+
+<!-- CART MODAL -->
+<div id="cart-modal">
+  <div class="cart-backdrop" id="cart-backdrop"></div>
+  <div class="cart-panel">
+    <button class="close-cart" id="close-cart-btn">✕</button>
+    <h2>Your Cart</h2>
+    <div id="cart-items-list"></div>
+    <div class="cart-total">Total: <span id="cart-total-display">₹0</span></div>
+    <button class="place-order-btn" id="place-order-btn">Place Order 🛒</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase compat SDK (matching your existing setup) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// ─── Firebase init ───────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBU_1kI8MrC_vH_xhH_Am68H_KxzVLl4pA",
+  authDomain: "resturant-c687d.firebaseapp.com",
+  projectId: "resturant-c687d",
+  storageBucket: "resturant-c687d.firebasestorage.app",
+  messagingSenderId: "689018370570",
+  appId: "1:689018370570:web:b3a8c91453d4b0769d3df3"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ─── Constants ───────────────────────────────────────────────────
+const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in ms
+const SS_KEY_SESSION   = 'tbl_session_id';   // sessionStorage keys
+const SS_KEY_EXPIRY    = 'tbl_session_exp';
+const SS_KEY_TABLE     = 'tbl_table_id';
+const LS_KEY_DEVICE    = 'tbl_device_id';   // localStorage — survives tab close
+
+// ─── State ───────────────────────────────────────────────────────
+let cart          = {};
+let menuItems     = [];
+let tableId       = null;
+let sessionId     = null;   // Firestore session doc ID
+let sessionExpiry = null;   // ms timestamp
+let timerInterval = null;
+let activeCategory = 'all';
+let unsubOrders   = null;
+
+// ─── Button wiring ───────────────────────────────────────────────
+document.getElementById('cart-fab').addEventListener('click', toggleCart);
+document.getElementById('cart-backdrop').addEventListener('click', toggleCart);
+document.getElementById('close-cart-btn').addEventListener('click', toggleCart);
+document.getElementById('place-order-btn').addEventListener('click', placeOrder);
+
+// ─── INIT ────────────────────────────────────────────────────────
+// ── Get or create a permanent device ID (survives tab close) ──────
+function getDeviceId() {
+  let id = localStorage.getItem(LS_KEY_DEVICE);
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem(LS_KEY_DEVICE, id);
+  }
+  return id;
+}
+
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  tableId = params.get('table');
+
+  if (!tableId) {
+    showScreen('📵', 'No Table Found', 'Please scan the QR code at your table to begin ordering.');
+    return;
+  }
+
+  const deviceId = getDeviceId();
+
+  // ── CASE 1: Tab still has a live session in sessionStorage ───────
+  const savedSession = sessionStorage.getItem(SS_KEY_SESSION);
+  const savedExpiry  = parseInt(sessionStorage.getItem(SS_KEY_EXPIRY) || '0', 10);
+  const savedTable   = sessionStorage.getItem(SS_KEY_TABLE);
+
+  if (savedSession && savedTable === tableId && Date.now() < savedExpiry) {
+    try {
+      const snap = await db.collection('sessions').doc(savedSession).get();
+      if (snap.exists && snap.data().status === 'active') {
+        sessionId     = savedSession;
+        sessionExpiry = savedExpiry;
+        await launchApp();
+        return;
+      }
+    } catch (e) { console.error(e); }
+    clearSessionStorage();
+  }
+
+  // ── CASE 2: Tab closed — fresh scan, check Firestore ─────────────
+  try {
+    const tableSnap = await db.collection('tables').doc(tableId).get();
+    if (!tableSnap.exists) {
+      showScreen('📵', 'Table Not Found', 'This QR code does not match any table. Please ask staff for help.');
+      return;
+    }
+
+    if (!tableSnap.data().tableActive) {
+      showScreen('🔒', 'Table Not Active', 'This table is not ready for ordering yet. Please ask a staff member to activate it.');
+      return;
+    }
+
+    // Check for an active session on this table
+    const activeQuery = await db.collection('sessions')
+      .where('tableId', '==', tableId)
+      .where('status', '==', 'active')
+      .get();
+
+    if (!activeQuery.empty) {
+      const activeSession = activeQuery.docs[0];
+      const activeDeviceId = activeSession.data().deviceId;
+
+      if (activeDeviceId === deviceId) {
+        // ── Same device — silently rejoin the existing session ──────
+        sessionId     = activeSession.id;
+        sessionExpiry = activeSession.data().expiresAt;
+
+        // Restore sessionStorage so timer works correctly
+        sessionStorage.setItem(SS_KEY_SESSION, sessionId);
+        sessionStorage.setItem(SS_KEY_EXPIRY,  String(sessionExpiry));
+        sessionStorage.setItem(SS_KEY_TABLE,   tableId);
+
+        await launchApp();
+        return;
+      } else {
+        // ── Different device — table is occupied ────────────────────
+        showScreen('🪑', 'Table Occupied', 'This table already has an active ordering session. Please wait or ask staff for assistance.');
+        return;
+      }
+    }
+
+    // ── No active session — create a fresh one ────────────────────
+    const expiry     = Date.now() + SESSION_DURATION;
+    const sessionRef = db.collection('sessions').doc();
+    await sessionRef.set({
+      tableId,
+      deviceId,                // store device ID so same device can rejoin
+      status:    'active',
+      expiresAt: expiry,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    sessionId     = sessionRef.id;
+    sessionExpiry = expiry;
+
+    sessionStorage.setItem(SS_KEY_SESSION, sessionId);
+    sessionStorage.setItem(SS_KEY_EXPIRY,  String(sessionExpiry));
+    sessionStorage.setItem(SS_KEY_TABLE,   tableId);
+
+    await launchApp();
+
+  } catch (e) {
+    showScreen('⚠️', 'Connection Error', 'Could not connect to the server. Please check your connection and try again.');
+    console.error(e);
+  }
+}
+
+// ─── Launch the main ordering UI ─────────────────────────────────
+async function launchApp() {
+  const tableSnap = await db.collection('tables').doc(tableId).get();
+  const tableName = tableSnap.exists ? (tableSnap.data().name || `Table ${tableId}`) : `Table ${tableId}`;
+
+  document.getElementById('session-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('cart-fab').style.display = 'flex';
+  document.getElementById('timer-table-label').textContent = tableName;
+  document.getElementById('table-label-header').textContent = `Welcome! You're ordering from ${tableName}`;
+  document.getElementById('restaurant-name').textContent = tableSnap.exists && tableSnap.data().restaurantName
+    ? tableSnap.data().restaurantName : 'Our Restaurant';
+
+  startTimer();
+  loadMenu();
+  listenOrders();
+}
+
+// ─── TIMER ───────────────────────────────────────────────────────
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  const progressBar     = document.getElementById('timer-progress');
+  const countdownEl     = document.getElementById('countdown-display');
+
+  timerInterval = setInterval(async () => {
+    const remaining = sessionExpiry - Date.now();
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      await expireSession();
+      return;
+    }
+
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    countdownEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    progressBar.style.width = ((remaining / SESSION_DURATION) * 100) + '%';
+
+    // Turn red in last 60 seconds
+    if (remaining < 60000) {
+      progressBar.style.background = 'var(--crimson)';
+      countdownEl.classList.add('urgent');
+    }
+  }, 1000);
+}
+
+// ─── EXPIRE SESSION ──────────────────────────────────────────────
+async function expireSession() {
+  // Mark session as expired in Firestore so table is freed
+  try {
+    if (sessionId) {
+      await db.collection('sessions').doc(sessionId).update({ status: 'expired' });
+    }
+  } catch (e) { console.error(e); }
+
+  // Clear sessionStorage so refreshing this tab can't restore it
+  clearSessionStorage();
+
+  // Stop order listener
+  if (unsubOrders) { unsubOrders(); unsubOrders = null; }
+
+  // Hide app, show expired screen
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('cart-fab').style.display = 'none';
+  document.getElementById('session-screen').style.display = 'flex';
+  showScreen('⏰', 'Session Expired', 'Your 10-minute ordering window has ended. Please scan the QR code at your table to start a new session.');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+function clearSessionStorage() {
+  sessionStorage.removeItem(SS_KEY_SESSION);
+  sessionStorage.removeItem(SS_KEY_EXPIRY);
+  sessionStorage.removeItem(SS_KEY_TABLE);
+}
+
+function showScreen(icon, title, message) {
+  document.getElementById('session-content').innerHTML = `
+    <div class="icon">${icon}</div>
+    <h2>${title}</h2>
+    <p>${message}</p>`;
+}
+
+// ─── MENU ────────────────────────────────────────────────────────
+async function loadMenu() {
+  try {
+    const snap = await db.collection('menuItems').get();
+    menuItems = [];
+    snap.forEach(d => menuItems.push({ id: d.id, ...d.data() }));
+    renderMenu();
+  } catch (e) { console.error(e); }
+}
+
+function renderMenu() {
+  const categories = ['all', ...new Set(menuItems.map(i => i.category).filter(Boolean))];
+  const catEl = document.getElementById('categories');
+  catEl.innerHTML = '';
+  categories.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (c === activeCategory ? ' active' : '');
+    btn.textContent = c === 'all' ? '🍽 All' : c;
+    btn.addEventListener('click', () => { activeCategory = c; renderMenu(); });
+    catEl.appendChild(btn);
+  });
+
+  const filtered = activeCategory === 'all' ? menuItems : menuItems.filter(i => i.category === activeCategory);
+  const container = document.getElementById('menu-container');
+  container.innerHTML = '';
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🥘</div><p>No items yet. Check back soon!</p></div>`;
+    return;
+  }
+
+  filtered.forEach(item => {
+    const qty  = cart[item.id]?.qty || 0;
+    const card = document.createElement('div');
+    card.className = 'menu-card';
+    card.innerHTML = `
+      <div class="menu-card-info">
+        <h3>${item.name}</h3>
+        <div class="price">₹${item.price}</div>
+        ${item.description ? `<div class="desc">${item.description}</div>` : ''}
+      </div>
+      <div class="qty-control">
+        <button class="qty-btn minus-btn">−</button>
+        <span class="qty-display">${qty}</span>
+        <button class="qty-btn plus-btn">+</button>
+      </div>`;
+    card.querySelector('.minus-btn').addEventListener('click', () => changeQty(item.id, -1));
+    card.querySelector('.plus-btn').addEventListener('click',  () => changeQty(item.id,  1));
+    container.appendChild(card);
+  });
+}
+
+function changeQty(itemId, delta) {
+  const item   = menuItems.find(i => i.id === itemId);
+  if (!item) return;
+  const newQty = (cart[itemId]?.qty || 0) + delta;
+  if (newQty <= 0) delete cart[itemId];
+  else cart[itemId] = { qty: newQty, name: item.name, price: item.price };
+  renderMenu();
+  updateCartBadge();
+}
+
+function updateCartBadge() {
+  const total = Object.values(cart).reduce((s, i) => s + i.qty, 0);
+  document.getElementById('cart-count').textContent = total;
+}
+
+// ─── CART ────────────────────────────────────────────────────────
+function toggleCart() {
+  const modal = document.getElementById('cart-modal');
+  modal.classList.toggle('open');
+  if (modal.classList.contains('open')) renderCartModal();
+}
+
+function renderCartModal() {
+  const items = Object.values(cart);
+  const listEl = document.getElementById('cart-items-list');
+  if (items.length === 0) {
+    listEl.innerHTML = `<div class="empty-state"><div class="icon">🛒</div><p>Your cart is empty.</p></div>`;
+    document.getElementById('cart-total-display').textContent = '₹0';
+    return;
+  }
+  listEl.innerHTML = items.map(i => `
+    <div class="cart-item">
+      <div><div class="cart-item-name">${i.name}</div><div class="cart-item-meta">x${i.qty}</div></div>
+      <div>₹${i.price * i.qty}</div>
+    </div>`).join('');
+  document.getElementById('cart-total-display').textContent =
+    `₹${items.reduce((s, i) => s + i.price * i.qty, 0)}`;
+}
+
+// ─── PLACE ORDER ─────────────────────────────────────────────────
+async function placeOrder() {
+  const items = Object.values(cart);
+  if (items.length === 0) return showToast('Your cart is empty!');
+  if (Date.now() > sessionExpiry)  return showToast('Session expired. Please rescan the QR code.');
+
+  try {
+    await db.collection('orders').add({
+      tableId,
+      sessionId,
+      items: items.map(i => ({ name: i.name, price: i.price, qty: i.qty })),
+      total: items.reduce((s, i) => s + i.price * i.qty, 0),
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    cart = {};
+    updateCartBadge();
+    toggleCart();
+    renderMenu();
+    showToast('✅ Order placed! Kitchen is on it.');
+  } catch (e) {
+    showToast('Failed to place order. Try again.');
+    console.error(e);
+  }
+}
+
+// ─── LISTEN ORDERS ───────────────────────────────────────────────
+function listenOrders() {
+  if (unsubOrders) unsubOrders();
+  unsubOrders = db.collection('orders')
+    .where('sessionId', '==', sessionId)
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snap => {
+      const orders = [];
+      snap.forEach(d => orders.push({ id: d.id, ...d.data() }));
+      const el = document.getElementById('orders-list');
+      if (orders.length === 0) {
+        el.innerHTML = `<div class="empty-state"><div class="icon">📋</div>No orders yet.</div>`;
+        return;
+      }
+      el.innerHTML = orders.map(o => `
+        <div class="order-card">
+          <div class="order-id">Order #${o.id.slice(-6).toUpperCase()}</div>
+          <div class="order-items-list">${o.items.map(i => `${i.name} x${i.qty}`).join(', ')}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem;">
+            <span class="status-badge status-${o.status}">${o.status}</span>
+            <strong>₹${o.total}</strong>
+          </div>
+        </div>`).join('');
+    });
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── START ───────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
